@@ -1,0 +1,9 @@
+modules = ["python-3.8"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["gdb"]
+
+[[ports]]
+localPort = 8000
+externalPort = 80
