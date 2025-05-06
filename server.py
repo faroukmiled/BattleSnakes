@@ -4,6 +4,7 @@ import typing
 
 from flask import Flask
 from flask import request
+import socket
 
 
 def run_server(handlers: typing.Dict):
@@ -39,6 +40,14 @@ def run_server(handlers: typing.Dict):
 
     host = "0.0.0.0"
     port = int(os.environ.get("PORT", "8000"))
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        while True:
+            try:
+                s.bind(("0.0.0.0", port))
+                s.close()
+                break
+            except OSError:
+                port += 1
 
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
