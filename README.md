@@ -1,52 +1,31 @@
-# Battlesnake Python Starter Project
+# Minimax BattleSnake AI built with Python
 
-### An official Battlesnake template written in Python. Get started at [play.battlesnake.com](https://play.battlesnake.com).
+![battlesnake](https://github.com/user-attachments/assets/a295f814-f5bf-4487-9980-3dab184069b2)
 
-![Battlesnake Logo](https://media.battlesnake.com/social/StarterSnakeGitHubRepos_Python.png)
+Orion's Fang was crafted for the 2023 RBC BattleSnake competition, where it secured second place. This competitive snake reached the 16th spot in the global standard ladder and 17th in duels. 
+Guided by a paranoid Minimax algorithm and optimized with alpha-beta pruning, it analyzes up to 7 steps ahead, making calculated moves based on heuristics such as flood fill and edge control scoring.
 
-This project is a great starting point for anyone wanting to program their first Battlesnake in Python. It can be run locally or easily deployed to a cloud provider of your choosing. See the [Battlesnake API Docs](https://docs.battlesnake.com/api) for more detail. 
+## About Orion's Fang
 
-## Technologies Used
-
-This project uses [Python 3](https://www.python.org/) and [Flask](https://flask.palletsprojects.com/).
-
-## Run Your Battlesnake
-
-1. Click the green 'Run' button to start your Battlesnake.
-2. Use your repl.co URL to register your Battlesnake and play games on [play.battlesnake.com](https://play.battlesnake.com).
-
-## Run you Battlesnake locally
-```sh
-pip install -r requirements.txt
-```
-
-Start your Battlesnake
-
-```sh
-python main.py
-```
-
-You should see the following output once it is running
-
-```sh
-Running your Battlesnake at http://0.0.0.0:8000
- * Serving Flask app 'My Battlesnake'
- * Debug mode: off
-```
-
-Open [localhost:8000](http://localhost:8000) in your browser and you should see
-
-```json
-{"apiversion":"1","author":"","color":"#888888","head":"default","tail":"default"}
-```
-
-Command to run a local game using the batllesnake CLI
-
-```sh
-./battlesnake play -W 11 -H 11 --name 'Python Starter Project' --url http://localhost:8000 -g solo --browser
-```
+Inspired by the Orion constellation, Orion's Fang is an aggressive yet rational hunter, excelling in area control and edge elimination tactics. However, it is sometimes vulnerable to overthinking, leading to self-inflicted losses.  
 
 
-## Next Steps
+![Project Image](image/orion_fang.png)
 
-Continue with the [Battlesnake Quickstart Guide](https://docs.battlesnake.com/quickstart) to customize and improve your Battlesnake's behavior.
+> Orion's Fang showing his area control capabilities against CoolSnake!
+
+# Debugging Process
+Debugging the Minimax decision tree with standard tools proved challenging, prompting the creation of a visual representation of the decision tree. This visual tool renders all possible game states for each snake up to the maximum depth, displaying game boards with indicators (0 for empty cells, 1 for food, 2 for snake heads, and letters for snake bodies). Each game state is scored, and optimal moves are highlighted, allowing the root game state to make the best decision.
+
+![Project Image](image/minimax_visual.png)
+
+> The visual tree at depth 2
+
+# Technology used
+ - Coded with Python, libraries such as Matplotlib and Networkx were used for creating the visual decision tree
+ - Deployed using DigitalOcean
+
+
+
+
+
