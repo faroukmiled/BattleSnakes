@@ -323,10 +323,10 @@ class TestBattlesnakeGym(unittest.TestCase):
         actions = [[Snake.DOWN], [Snake.RIGHT], [Snake.RIGHT], [Snake.DOWN], [Snake.LEFT]]
         observation, _, _, _ = simulate_snake(env, actions, render=False, break_with_done=False)
 
-        food_state = np.zeros(shape=(3, 3), dtype=np.uint8)
+        food_state = np.zeros(shape=(3, 3), dtype=np.int8)
         food_state[1, 2] = 1
 
-        snake_state = np.zeros(shape=(3, 3), dtype=np.uint8)
+        snake_state = np.zeros(shape=(3, 3), dtype=np.int8)
         snake_state[1, 1] = 1
         snake_state[2, 2] = 1
         snake_state[1, 2] = 1

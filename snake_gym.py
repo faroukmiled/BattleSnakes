@@ -12,9 +12,9 @@
 # permissions and limitations under the License.
 
 import numpy as np
-import gym
-from gym import spaces
-from gym.utils import seeding
+import gymnasium as gym
+from gymnasium import spaces
+from gymnasium.utils import seeding
 import json
 import string
 from snake import Snakes
@@ -110,7 +110,7 @@ class BattlesnakeGym(gym.Env):
                                            shape=(self.map_size[0],
                                                   self.map_size[1],
                                                   self.number_of_snakes+1),
-                                           dtype=np.uint8)
+                                           dtype=np.int8)
         elif "bordered" in self.observation_type:
             if "max-bordered" in self.observation_type:
                 border_size = self.MAX_BORDER[0] - self.map_size[0]
@@ -120,7 +120,7 @@ class BattlesnakeGym(gym.Env):
                                            shape=(self.map_size[0]+border_size,
                                                   self.map_size[1]+border_size,
                                                   self.number_of_snakes+1),
-                                           dtype=np.uint8)
+                                           dtype=np.int8)
         return observation_space
 
     def initialise_game_state(self, game_state_dict):
@@ -143,42 +143,37 @@ class BattlesnakeGym(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def reset(self, map_size=None):
-        '''
-        Inherited function of the openAI gym to reset the environment.
-
-        Parameters:
-        -----------
-        map_size: (int, int), default None
-            Optional paramter to reset the map size
-        '''
+    def reset(self, *, seed=None, options=None):
+        super().reset(seed=seed)
+        if options is None:
+            options = {}
+        map_size = options.get("map_size")
         if map_size is not None:
             self.observation_space = self.get_observation_space()
             self.map_size = map_size
-        
+
         if self.initial_game_state is not None:
             self.snakes, self.food, self.turn_count = self.initialise_game_state(self.initial_game_state)
         else:
             self.turn_count = 0
-
             self.snakes = Snakes(self.map_size, self.number_of_snakes, self.snake_spawn_locations)
             self.food = Food(self.map_size, self.food_spawn_locations)
             self.food.spawn_food(self.snakes.get_snake_51_map())
 
-        dones = {i:False for i in range(self.number_of_snakes)}
-        
+        dones = {i: False for i in range(self.number_of_snakes)}
         snakes_health = {}
         snake_info = {}
         self.snake_max_len = {}
         for i, snake in enumerate(self.snakes.get_snakes()):
             snakes_health[i] = snake.health
-            snake_info[i] = "Did not collide" 
+            snake_info[i] = "Did not collide"
             self.snake_max_len[i] = 0
+
         info = {'current_turn': self.turn_count,
                 'snake_health': snakes_health,
-                'snake_info': snake_info, 
+                'snake_info': snake_info,
                 'snake_max_len': self.snake_max_len}
-        return self._get_observation(), {}, dones, info
+        return self._get_observation(), info
 
     def _did_snake_collide(self, snake, snakes_to_be_killed):
         '''
@@ -328,6 +323,8 @@ class BattlesnakeGym(gym.Env):
         # DEBUGING
         json_before_moving = self.get_json()
         
+        if self.number_of_snakes == 1:
+            actions = [actions]  # wrap single action into list
         # Reduce health and move
         for i, snake in enumerate(self.snakes.get_snakes()):
             reward[i] = 0
@@ -426,6 +423,9 @@ class BattlesnakeGym(gym.Env):
         else:
             done = False
             
+        if self.number_of_snakes == 1:
+            reward = sum(reward.values()) 
+            
         snake_alive_dict = {i: a for i, a in enumerate(np.logical_not(snakes_alive).tolist())}
         self.turn_count += 1
 
@@ -446,10 +446,12 @@ class BattlesnakeGym(gym.Env):
             print("final json {}".format(self.get_json()))
             raise
             
-        return self._get_observation(), reward, snake_alive_dict, {'current_turn': self.turn_count,
-                                                                   'snake_health': snakes_health,
-                                                                   'snake_info': snake_info,
-                                                                   'snake_max_len': self.snake_max_len}
+        terminated = all(snake_alive_dict.values())
+        truncated = False  # Optional: set True if you have a frame limit or timeout
+        return self._get_observation(), reward, terminated, truncated, {'current_turn': self.turn_count,
+                                                                        'snake_health': snakes_health,
+                                                                        'snake_info': snake_info,
+                                                                        'snake_max_len': self.snake_max_len}
                 
     def _get_observation(self):
         '''
@@ -488,7 +490,7 @@ class BattlesnakeGym(gym.Env):
 
         depth_of_state = 1 + self.snakes.number_of_snakes
         state = np.zeros((self.map_size[0], self.map_size[1], depth_of_state),
-                         dtype=np.uint8)
+                         dtype=np.int8)
 
         # Include the postions of the food
         state[:, :, FOOD_INDEX] = self.food.get_food_map()
@@ -516,7 +518,7 @@ class BattlesnakeGym(gym.Env):
         # Create board
         board_size = (self.map_size[0]*(BOX_SIZE + SPACE_BETWEEN_BOXES) + 2*BOUNDARY,
                       self.map_size[1]*(BOX_SIZE + SPACE_BETWEEN_BOXES) + 2*BOUNDARY)
-        board = np.ones((board_size[0], board_size[1], 3), dtype=np.uint8) * 255
+        board = np.ones((board_size[0], board_size[1], 3), dtype=np.int8) * 255
 
         # Create boxes
         for i in range(0, self.map_size[0]):
@@ -684,16 +686,16 @@ class BattlesnakeGym(gym.Env):
             return 
 
 
-env = BattlesnakeGym(map_size=(11,11),number_of_snakes=4)
+# env = BattlesnakeGym(map_size=(11,11),number_of_snakes=1)
 
-for episode_num in range(10):
-    obs,_,dones, info = env.reset()
+# for episode_num in range(10):
+#     obs, info = env.reset()
 
-    episode_over = False
-    while not episode_over:
-        action = env.action_space.sample()  # replace with actual agent
-        obs, reward, snake_alive_dict,dict = env.step(action)
+#     episode_over = False
+#     while not episode_over:
+#         action = env.action_space.sample()  # replace with actual agent
+#         obs, reward, terminated,truncated,dict = env.step(action)
 
-        episode_over = (np.array(list(snake_alive_dict.values()))==True).all()
-        env.render(mode ="human")
-env.close()
+#         episode_over = terminated==True
+#         env.render(mode ="human")
+# env.close()

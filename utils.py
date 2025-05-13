@@ -12,7 +12,8 @@
 # permissions and limitations under the License.
 
 import numpy as np
-import gym
+import gymnasium as gym
+from gymnasium import spaces
 import math
 
 def is_coord_in(coord, array):
@@ -61,21 +62,32 @@ def generate_coordinate_list_from_binary_map(map_image):
                 coordinate_list.append((i, j))
     return coordinate_list
 
-class MultiAgentActionSpace(list):
-    '''
-    Code taken from https://github.com/koulanurag/ma-gym/blob/master/ma_gym/envs/utils/action_space.py
-    '''
-    def __init__(self, agents_action_space):
-        for x in agents_action_space:
-            assert isinstance(x, gym.spaces.space.Space)
 
-        super(MultiAgentActionSpace, self).__init__(agents_action_space)
-        self._agents_action_space = agents_action_space
-        self.n = len(self._agents_action_space)
+class MultiAgentActionSpace(spaces.Space):
+    def __new__(cls, agents_action_spaces):
+        if len(agents_action_spaces) == 1:
+            # Single agent case → just return the Discrete space itself
+            return agents_action_spaces[0]
+        return super().__new__(cls)
+
+    def __init__(self, agents_action_spaces):
+        if len(agents_action_spaces) == 1:
+            # __new__ returned Discrete(4), __init__ won't run
+            return
+        self.agents_action_spaces = agents_action_spaces
+        self.n = len(agents_action_spaces)
+        super().__init__(shape=(self.n,), dtype=np.int64)
 
     def sample(self):
-        """ samples action for each agent from uniform distribution"""
-        return [agent_action_space.sample() for agent_action_space in self._agents_action_space]
+        return [space.sample() for space in self.agents_action_spaces]
+
+    def contains(self, x):
+        return isinstance(x, (list, tuple)) and all(
+            space.contains(a) for space, a in zip(self.agents_action_spaces, x)
+        )
+
+    def __repr__(self):
+        return f"MultiAgentActionSpace({self.agents_action_spaces})"
 
 def get_distance(point1, point2):
     return math.sqrt((point1[0]-point2[0])**2 + (point1[1]-point2[1])**2)

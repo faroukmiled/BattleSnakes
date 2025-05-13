@@ -82,8 +82,12 @@ class BattlesnakeGym(gym.Env):
         self.number_of_snakes = number_of_snakes
         self.map_size = map_size
 
-        self.action_space = MultiAgentActionSpace(
-            [spaces.Discrete(4) for _ in range(number_of_snakes)])
+        if self.number_of_snakes == 1:
+            self.action_space = spaces.Discrete(4)
+        else:
+            self.action_space = MultiAgentActionSpace([
+                spaces.Discrete(4) for _ in range(number_of_snakes)
+            ])
 
         self.observation_type = observation_type
         self.observation_space = self.get_observation_space()
@@ -110,7 +114,7 @@ class BattlesnakeGym(gym.Env):
                                            shape=(self.map_size[0],
                                                   self.map_size[1],
                                                   self.number_of_snakes+1),
-                                           dtype=np.uint8)
+                                           dtype=np.int8)
         elif "bordered" in self.observation_type:
             if "max-bordered" in self.observation_type:
                 border_size = self.MAX_BORDER[0] - self.map_size[0]
@@ -120,7 +124,7 @@ class BattlesnakeGym(gym.Env):
                                            shape=(self.map_size[0]+border_size,
                                                   self.map_size[1]+border_size,
                                                   self.number_of_snakes+1),
-                                           dtype=np.uint8)
+                                           dtype=np.int8)
         return observation_space
 
     def initialise_game_state(self, game_state_dict):
@@ -488,7 +492,7 @@ class BattlesnakeGym(gym.Env):
 
         depth_of_state = 1 + self.snakes.number_of_snakes
         state = np.zeros((self.map_size[0], self.map_size[1], depth_of_state),
-                         dtype=np.uint8)
+                         dtype=np.int8)
 
         # Include the postions of the food
         state[:, :, FOOD_INDEX] = self.food.get_food_map()
@@ -516,7 +520,7 @@ class BattlesnakeGym(gym.Env):
         # Create board
         board_size = (self.map_size[0]*(BOX_SIZE + SPACE_BETWEEN_BOXES) + 2*BOUNDARY,
                       self.map_size[1]*(BOX_SIZE + SPACE_BETWEEN_BOXES) + 2*BOUNDARY)
-        board = np.ones((board_size[0], board_size[1], 3), dtype=np.uint8) * 255
+        board = np.ones((board_size[0], board_size[1], 3), dtype=np.int8) * 255
 
         # Create boxes
         for i in range(0, self.map_size[0]):
