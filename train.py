@@ -24,15 +24,15 @@ model = PPO(
 )
 
 # === 5. Train the model ===
-model.learn(total_timesteps=100_000)
+model.learn(total_timesteps=300_000)
 
 # === 6. Save the model ===
 model.save("ppo_battlesnake")
 
 print("Training complete. View logs with:")
 print("    tensorboard --logdir ./ppo_battlesnake_logs/")
-
-"""model = PPO.load("ppo_battlesnake")
+"""
+model = PPO.load("ppo_battlesnake")
 raw_env = BattlesnakeGym(map_size=(11, 11), number_of_snakes=1)
 obs,_ = raw_env.reset()
 while True:

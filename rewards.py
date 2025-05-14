@@ -25,18 +25,20 @@ class SimpleRewards(Rewards):
     Simple class to handle a fixed reward scheme
     '''
     def __init__(self):
-        self.reward_dict = {"another_turn": 1,
-                            "ate_food": 0,
-                            "won": 0,
-                            "died": 0,
-                            "ate_another_snake": 0,
-                            "hit_wall": 0,
-                            "hit_other_snake": 0,
-                            "hit_self": 0,
-                            "was_eaten": 0,
-                            "other_snake_hit_body": 0,
-                            "forbidden_move": 0,
-                            "starved": 0}
+        self.reward_dict = {
+            "another_turn": 1,             # Small reward for staying alive
+            "ate_food": 0.5,                 # Big reward for eating
+            "won": 2,                     # Large reward for winning
+            "died": -3.0,                    # Penalty for dying
+            "ate_another_snake": 0.0,        # Huge reward if snake kills another
+            "hit_wall": 0.0,                # Wall collisions are bad
+            "hit_other_snake": 0.0,         # Hitting another snake is also bad
+            "hit_self": -3.0,                # Running into own body
+            "was_eaten": 0.0,               # Died because of another snake
+            "other_snake_hit_body": 0.0,     # Reward for being solid — other snake hit us
+            "forbidden_move": -3.0,          # Illegal move penalty
+            "starved": -2.0                 # Ran out of health
+        }
 
     def get_reward(self, name, snake_id, episode):
         return self.reward_dict[name]

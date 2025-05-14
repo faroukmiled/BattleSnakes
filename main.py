@@ -28,13 +28,17 @@ def gamestate_to_array(gamestate):
     
     # Mark food positions
     for food in gamestate['board']['food']:
-        board_array[food['y'], food['x'],0] = 1  # Mark food with 1
+        board_array[(height - 1 - food['y']), food['x'],0] = 1  # Mark food with 1
 
     # Mark snake positions
     for snake in gamestate['board']['snakes']:
         for segment in snake['body']:
-            board_array[segment['y'], segment['x'],1] = 5  # Mark snake with 5
+            if segment == snake['body'][0]:
+                board_array[(height - 1 - segment['y']), segment['x'],1] = 5
+            else:
+                board_array[(height - 1  - segment['y']), segment['x'],1] = 1  # Mark snake with 1
     return board_array
+
 def info() -> typing.Dict:
     print("INFO")
 
@@ -102,7 +106,10 @@ def move(game_state: typing.Dict) -> typing.Dict:
 
     # Choose a random move from the safe ones
     obs = gamestate_to_array(game_state)
-    next_move,_ = model.predict(obs)
+    print(obs[:,:,1])
+    action_idx, _ = model.predict(obs)
+    move_map = {0: "up", 1: "down", 2: "left", 3: "right"}
+    next_move = move_map[int(action_idx)]
     
 
     # TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
