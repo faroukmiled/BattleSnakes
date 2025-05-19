@@ -2,14 +2,9 @@ import gymnasium as gym
 import torch
 import numpy as np
 from typing import Optional
-from gymnasium.wrappers import RecordEpisodeStatistics, RecordVideo
-import logging
-import cv2
-import pygame
 import os
 import torch
 import json
-from PIL import Image
 import matplotlib.pyplot as plt
 import torch.optim as optim
 import random
@@ -323,21 +318,21 @@ class BattleSnakeEnv(gym.Env):
 
 os.environ['SDL_AUDIODRIVER'] = 'directx' 
 gym.register(
-    id="gymnasium_env/BattleSnakeEnv",
+    id="BattleSnakeEnv",
     entry_point=BattleSnakeEnv
 )
-
-"""pygame.init()
+"""
+pygame.init()
 DISPLAYSURF = pygame.display.set_mode((512,512),0,32)
 clock = pygame.time.Clock()
-pygame.display.flip()"""
+pygame.display.flip()
 
 training_period = 250  # record the agent's episode every 250
 num_training_episodes = 1  # total number of training episodes
 with open("game_state.json","r") as f:
-    game_state = json.load(f)
-env = gym.make("gymnasium_env/BattleSnakeEnv",game_state =game_state,size = 11, render_mode = "rgb_array")  # replace with your environment
-
+    game_state = json.load(f)"""
+env = gym.make("BattleSnakeEnv",game_state ={},size = 11, render_mode = "rgb_array")  # replace with your environment
+"""
 def get_board(obs):
     board = np.ones((11,11,3))*255
     board[obs[:,:,0]==1] = [0,255,0] ### green for food
@@ -356,7 +351,7 @@ obs,info = env.reset()
 output_size = env.action_space.n
 input_size = env.observation_space.shape[0]  # 4 inputs: position, velocity, angle, angular velocity
 output_size = env.action_space.n  # 4 outputs: left or right
-"""done = False
+done = False
 while not done:
     action = env.action_space.sample()
     obs, reward, done, _, _ = env.step(action)
@@ -368,7 +363,7 @@ while not done:
         plt.pause(0.5)          # Pause for 0.5 seconds before the next iteration
         plt.clf()  
 
-"""
+
 
 policy_net = DQN(output_size, 5)
 target_net = DQN(output_size, 5)
@@ -485,3 +480,4 @@ env.close()
 #test_dqn_agent()
 plt.plot(x,reward_list)
 plt.show()
+"""

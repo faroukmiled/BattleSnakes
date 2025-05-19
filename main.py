@@ -14,10 +14,115 @@ import random
 import typing
 import json
 import os
-
+import torch
+import numpy as np
+from torch import nn
+from torch.distributions import MultivariateNormal,Categorical
 # info is called when you create your Battlesnake on play.battlesnake.com
 # and controls your Battlesnake's appearance
 # TIP: If you open your Battlesnake URL in a browser you should see this data
+class ActorCritic(nn.Module):
+    def __init__(self, state_dim, action_dim, has_continuous_action_space, action_std_init):
+        super(ActorCritic, self).__init__()
+
+        self.has_continuous_action_space = has_continuous_action_space
+
+        if has_continuous_action_space:
+            self.action_dim = action_dim
+            self.action_var = torch.full((action_dim,), action_std_init * action_std_init)
+
+        # actor
+        if has_continuous_action_space :
+            self.actor = nn.Sequential(
+                             torch.nn.Conv2d(in_channels=state_dim,out_channels=2,kernel_size=3),
+                             torch.nn.Conv2d(in_channels=2,out_channels=1,kernel_size=3),
+                             torch.nn.Flatten(),
+                             torch.nn.Linear(49, 24),
+                             torch.nn.Linear(24, 24),
+                             torch.nn.Linear(24, 4)
+                        )
+        else:
+            self.actor = nn.Sequential(
+                            torch.nn.Conv2d(in_channels=state_dim,out_channels=2,kernel_size=3),
+                            torch.nn.Tanh(),
+                            torch.nn.Conv2d(in_channels=2,out_channels=1,kernel_size=3),
+                            torch.nn.Flatten(),
+                            torch.nn.Tanh(),
+                            torch.nn.Linear(49, 24),
+                            torch.nn.Tanh(),
+                            torch.nn.Linear(24, 24),
+                            torch.nn.Tanh(),
+                            torch.nn.Linear(24, action_dim),
+                            torch.nn.Softmax(dim=-1)
+                        )
+
+        
+        # critic
+        self.critic = nn.Sequential(
+                        torch.nn.Conv2d(in_channels=5,out_channels=2,kernel_size=3),
+                        torch.nn.Tanh(),
+                        torch.nn.Conv2d(in_channels=2,out_channels=1,kernel_size=3),
+                        torch.nn.Flatten(),
+                        torch.nn.Tanh(),
+                        torch.nn.Linear(49, 24),
+                        torch.nn.Tanh(),
+                        torch.nn.Linear(24, 24),
+                        torch.nn.Tanh(),
+                        torch.nn.Linear(24, 1),
+                    )
+        
+    def set_action_std(self, new_action_std):
+
+        if self.has_continuous_action_space:
+            self.action_var = torch.full((self.action_dim,), new_action_std * new_action_std)
+        else:
+            print("--------------------------------------------------------------------------------------------")
+            print("WARNING : Calling ActorCritic::set_action_std() on discrete action space policy")
+            print("--------------------------------------------------------------------------------------------")
+
+
+    def forward(self):
+        raise NotImplementedError
+    
+
+    def act(self, state):
+
+        if self.has_continuous_action_space:
+            action_mean = self.actor(state)
+            cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
+            dist = MultivariateNormal(action_mean, cov_mat)
+        else:
+            action_probs = self.actor(state)
+            dist = Categorical(action_probs)
+
+        action = dist.sample()
+        action_logprob = dist.log_prob(action)
+        state_val = self.critic(state)
+
+        return action.detach(), action_logprob.detach(), state_val.detach()
+    
+
+    def evaluate(self, state, action):
+
+        if self.has_continuous_action_space:
+            action_mean = self.actor(state)
+            action_var = self.action_var.expand_as(action_mean)
+            cov_mat = torch.diag_embed(action_var)
+            dist = MultivariateNormal(action_mean, cov_mat)
+            
+            # for single action continuous environments
+            if self.action_dim == 1:
+                action = action.reshape(-1, self.action_dim)
+
+        else:
+            action_probs = self.actor(state)
+            dist = Categorical(action_probs)
+
+        action_logprobs = dist.log_prob(action)
+        dist_entropy = dist.entropy()
+        state_values = self.critic(state)
+        
+        return action_logprobs, state_values, dist_entropy
 def info() -> typing.Dict:
     print("INFO")
 
@@ -38,153 +143,36 @@ def start(game_state: typing.Dict):
 # end is called when your Battlesnake finishes a game
 def end(game_state: typing.Dict):
     print("GAME OVER\n")
-
+env_name =  "BattleSnakeEnv"
+directory = "PPO_preTrained" + '/' + env_name + '/'
+checkpoint_path = directory + "PPO_{}_{}_{}.pth".format(env_name, 0, 0)
+model = ActorCritic(5,4, False, 0)
+model.load_state_dict(torch.load(checkpoint_path))
 
 # move is called on every turn and returns your next move
 # Valid moves are "up", "down", "left", or "right"
 # See https://docs.battlesnake.com/api/example-move for available data
+def game_state_to_env_state(game_state):
+        height = game_state['board']["height"]
+        width = game_state['board']["width"]
+        state = np.zeros((11,11,5)).astype(np.int8)
+        for food in game_state['board']['food']:
+            state[(height - 1 - food['y']), food['x'],0] = 1  # Mark food with 1
+
+        # Mark snake positions
+        for i in range(len(game_state["board"]["snakes"])):
+                for segment in game_state["board"]["snakes"][i]["body"]:
+                    if segment == game_state["board"]["snakes"][i]["body"][0]:
+                        state[(height - 1 - segment['y']), segment['x'],i+1] = 5
+                    else:
+                        state[(height - 1  - segment['y']), segment['x'],i+1] = 1  # Mark snake with 1
+        return state
 def move(game_state: typing.Dict) -> typing.Dict:
-
-    is_move_safe = {"up": True, "down": True, "left": True, "right": True}
-    if not os.path.exists("game_state.json"):
-        with open("game_state.json","w") as f:
-            json.dump(game_state,f)
-
-    # We've included code to prevent your Battlesnake from moving backwards
-    my_head = game_state["you"]["body"][0]  # Coordinates of your head
-    my_neck = game_state["you"]["body"][1]  # Coordinates of your "neck"
-
-    if my_neck["x"] < my_head["x"]:  # Neck is left of head, don't move left
-        is_move_safe["left"] = False
-
-    elif my_neck["x"] > my_head["x"]:  # Neck is right of head, don't move right
-        is_move_safe["right"] = False
-
-    elif my_neck["y"] < my_head["y"]:  # Neck is below head, don't move down
-        is_move_safe["down"] = False
-
-    elif my_neck["y"] > my_head["y"]:  # Neck is above head, don't move up
-        is_move_safe["up"] = False
-
-    # TODO: Step 1 - Prevent your Battlesnake from moving out of bounds
-    board_width = game_state['board']['width']
-    board_height = game_state['board']['height']
-
-    if my_head["x"] == 0:
-        is_move_safe["left"] = False
-    if my_head["x"] == board_width - 1:
-        is_move_safe["right"] = False
-    if my_head["y"] == 0:
-        is_move_safe["down"] = False
-    if my_head["y"] == board_height - 1:
-        is_move_safe["up"] = False
-
-    # TODO: Step 2 - Prevent your Battlesnake from colliding with itself
-    my_body = game_state["you"]["body"]
-    body_coords = [(segment["x"], segment["y"]) for segment in my_body]
-    for direction in is_move_safe.keys():
-        if is_move_safe[direction]:
-            next_pos = get_next_position(my_head, direction)
-            if (next_pos["x"], next_pos["y"]) in body_coords:
-                is_move_safe[direction] = False
-
-    # TODO: Step 3 - Prevent your Battlesnake from colliding with other Battlesnakes
-    opponents = game_state['board']['snakes']
-    opponent_coords = set()
-    for snake in opponents:
-        if snake["id"] != game_state["you"]["id"]:
-            for segment in snake["body"]:
-                opponent_coords.add((segment["x"], segment["y"]))
-
-    for direction in list(is_move_safe):
-        if not is_move_safe[direction]:
-            continue
-        next_pos = get_next_position(my_head, direction)
-        if (next_pos["x"], next_pos["y"]) in opponent_coords:
-            is_move_safe[direction] = False
-            
-    # TODO: Step 3.5: Predict opponent head moves and avoid dangerous head-on tiles
-    danger_zones = set()
-    my_length = len(my_body)
-
-    for snake in opponents:
-        if snake["id"] == game_state["you"]["id"]:
-            continue  # skip self
-
-        their_head = snake["body"][0]
-        their_length = len(snake["body"])
-
-        if their_length >= my_length:
-            # They can kill us in a head-on collision
-            for direction in ["up", "down", "left", "right"]:
-                target = get_next_position(their_head, direction)
-                danger_zones.add((target["x"], target["y"]))
-
-    # Now block moves that lead us into a head-on danger zone
-    for direction in list(is_move_safe):
-        if not is_move_safe[direction]:
-            continue
-        next_pos = get_next_position(my_head, direction)
-        if (next_pos["x"], next_pos["y"]) in danger_zones:
-            is_move_safe[direction] = False
-            
-    # Step 5: Avoid trapping self
-    occupied = set(body_coords).union(opponent_coords)
-    my_length = len(my_body)
-    for direction in list(is_move_safe):
-        if not is_move_safe[direction]:
-            continue
-        next_pos = get_next_position(my_head, direction)
-        reachable_space = flood_fill(
-            next_pos,
-            occupied,
-            board_width,
-            board_height,
-            limit=my_length + 2  # give it a bit more than length buffer
-        )
-        if reachable_space < my_length:
-            is_move_safe[direction] = False
-
-    # Are there any safe moves left?
-    safe_moves = []
-    for move, isSafe in is_move_safe.items():
-        if isSafe:
-            safe_moves.append(move)
-
-    if len(safe_moves) == 0:
-        print(
-            f"MOVE {game_state['turn']}: No safe moves detected! Moving down")
-        return {"move": "down"}
-
-    # Choose a random move from the safe ones
-    next_move = random.choice(safe_moves)
-
-    # TODO: Step 4 - Move towards food instead of random, to regain health and survive longer
-    safe_moves = [move for move, safe in is_move_safe.items() if safe]
-    food = game_state["board"]["food"]
-    my_health = game_state["you"]["health"]
-
-    if safe_moves and food and my_health < 40:
-        # Try to move toward nearest food
-        food.sort(key=lambda f: abs(f["x"] - my_head["x"]) + abs(f["y"] - my_head["y"]))
-        target = food[0]
-        dx = target["x"] - my_head["x"]
-        dy = target["y"] - my_head["y"]
-
-        food_moves = []
-        if dx < 0 and is_move_safe["left"]:
-            food_moves.append("left")
-        if dx > 0 and is_move_safe["right"]:
-            food_moves.append("right")
-        if dy < 0 and is_move_safe["down"]:
-            food_moves.append("down")
-        if dy > 0 and is_move_safe["up"]:
-            food_moves.append("up")
-
-        if food_moves:
-            next_move = random.choice(food_moves)
-            print(f"MOVE {game_state['turn']}: Low health, chasing food -> {next_move}")
-            return {"move": next_move}
+    state = game_state_to_env_state(game_state)
+    state = torch.FloatTensor(np.transpose(state,(2,0,1)))
+    action, action_logprob, state_val = model.act(state)
+    action_dict = {0:"up",1:"down",2:"left",3:"right"}
+    next_move = action_dict[action]
 
     print(f"MOVE {game_state['turn']}: {next_move}")
     return {"move": next_move}
