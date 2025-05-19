@@ -2,7 +2,7 @@ modules = ["python-3.8"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["gdb"]
+packages = ["SDL2", "SDL2_image", "SDL2_mixer", "SDL2_ttf", "cairo", "ffmpeg-full", "fontconfig", "freetype", "gdb", "ghostscript", "glibcLocales", "gobject-introspection", "gtk3", "libGL", "libGLU", "libjpeg", "libpng", "pkg-config", "portmidi", "qhull", "tcl", "tk"]
 
 [[ports]]
 localPort = 8000
